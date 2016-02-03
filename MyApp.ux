@@ -1,0 +1,119 @@
+<App Theme="Basic">
+
+	<DockPanel>
+		<JavaScript>
+			var Observable = require("FuseJS/Observable");
+
+			var apiSrc = 'http://lindaikeji.goodbarber.com/apiv3/getLastItems/7459187/1/';
+
+			var data = Observable();
+
+			var loadingNewFeed = Observable(true);
+
+			var appendingData = Observable(false);
+
+			var paginationOffset = 1;
+
+			var isBusy = Observable(false);
+
+			fetchData();
+
+			function fetchData(appendData) {
+				if (isBusy.value == true || paginationOffset >= 31)
+					return;
+
+    			isBusy.value = true;
+
+    			appendingData.value = appendData;
+
+				fetch( apiSrc + paginationOffset )
+				.then(function(response) { return response.json(); })
+				.then(function(responseObject) {
+					var posts = [], rawPosts;
+
+					if (appendData) {
+						var items = data.value.items;
+
+						for (var i = 0; i < responseObject.items.length; i++) {
+							items.push(responseObject.items[i]);
+						};
+
+						responseObject.items = items;
+						appendingData.value = false;
+					}
+
+					data.value = responseObject;
+					isBusy.value = false;
+					loadingNewFeed.value = false;
+
+					paginationOffset++; // <-- You can manually increase pagination or whatever here
+				});
+			}
+
+			module.exports = {
+				dataSource: data,
+				loadingNewFeed: loadingNewFeed,
+				appendingData: appendingData,
+				fetchAppendData: function() { fetchData(true) }
+ 			};
+		</JavaScript>
+
+		<StatusBarBackground Dock="Top" />
+		<BottomFrameBackground Dock="Bottom" />
+
+		<StackPanel Dock="Top">
+			<Text FontSize="25" Alignment="VerticalCenter" TextAlignment="Center" Padding="2" Value="NEWS" />
+			<Rectangle Height="1" Margin="0,2,0,0" Fill="#333c48" />
+		</StackPanel>
+
+		<Text ux:Class="Header" TextWrapping="Wrap" FontSize="18" />
+		<Text ux:Class="Article" Margin="10,0,10,0" TextWrapping="Wrap" FontSize="13" />
+		<Text ux:Class="PublishedDate" Margin="0,10,0,0" FontSize="13" TextColor="#999" />
+
+
+		<WhileTrue Value="{loadingNewFeed}">
+			<StackPanel Alignment="Center">
+				<Text Value="Loading..."></Text>
+			</StackPanel>
+		</WhileTrue>
+
+		<WhileFalse Value="{loadingNewFeed}">
+			<ScrollView>
+
+				<WhileScrollable ScrollDirections="Down" Invert="true">
+					<Callback Handler="{fetchAppendData}" />
+				</WhileScrollable>
+
+				<DockPanel>
+					<StackPanel Alignment="Top" Dock="Top">
+						<Panel Height="7" />
+						<Each Items="{dataSource.items}">
+		 					<Panel ux:Class="HorizontalBar" Margin="70,10,0,10" Alignment="VerticalCenter">
+								<Rectangle Height="1" Fill="#eee" />
+							</Panel>
+
+							<DockPanel Margin="10,10,10,5">
+	    						<Rectangle Height="50" Width="50" Dock="Left" Margin="0,3,10,0" Alignment="TopLeft">
+	    							<ImageFill Url="{thumbnail}" />
+	    						</Rectangle>
+		    					<Header Dock="Top" Value="{title}" />
+							 	<PublishedDate Dock="Bottom" Value="{date}" />
+							</DockPanel>
+
+							<HorizontalBar />
+						</Each>
+					</StackPanel>
+
+					<WhileTrue Value="{appendingData}">
+						<Panel Height="80" Dock="Bottom">
+							<Text Value="Loading..." Alignment="Center" TextColor="#666"></Text>
+						</Panel>
+					</WhileTrue>
+
+				</DockPanel>
+
+			</ScrollView>
+		</WhileFalse>
+
+	</DockPanel>
+</App>
